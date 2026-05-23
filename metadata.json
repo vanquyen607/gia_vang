@@ -1,0 +1,6 @@
+{
+  "name": "Vietnam Gold Tracker",
+  "description": "Ứng dụng chuyên nghiệp theo dõi, so sánh giá vàng SJC, DOJI, PNJ trong nước và thế giới, tích hợp quy đổi tỉ giá và phân tích AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
