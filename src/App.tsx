@@ -24,7 +24,9 @@ import {
   BarChart2,
   Briefcase,
   Bot,
-  Palette
+  Palette,
+  Edit2,
+  Check
 } from 'lucide-react';
 
 export default function App() {
@@ -58,6 +60,66 @@ export default function App() {
 
   // Quick state notification banner list
   const [toastMessage, setToastMessage] = useState<{ id: string; title: string; text: string } | null>(null);
+
+  // Manual pricing and conversion overrides
+  const [isEditingWorldPrice, setIsEditingWorldPrice] = useState<boolean>(false);
+  const [tempWorldPrice, setTempWorldPrice] = useState<string>('');
+  const [isEditingUsdRate, setIsEditingUsdRate] = useState<boolean>(false);
+  const [tempUsdRate, setTempUsdRate] = useState<string>('');
+
+  const handleOverridePrice = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const parsedPrice = parseFloat(tempWorldPrice);
+    if (!isNaN(parsedPrice) && parsedPrice > 0) {
+      try {
+        const res = await fetch('/api/gold-prices/override', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ worldPrice: parsedPrice })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPrices(data);
+          setIsEditingWorldPrice(false);
+          setToastMessage({
+            id: 'override-' + Date.now(),
+            title: "CẬP NHẬT THÀNH CÔNG",
+            text: `Đã thiết lập giá vàng thế giới cố định là $${parsedPrice.toLocaleString('vi-VN')} /oz. Các giá thương hiệu trong nước tự động đồng bộ.`
+          });
+          setTimeout(() => setToastMessage(null), 4500);
+        }
+      } catch (err) {
+        console.error("Lỗi cập nhật giá vàng thủ công:", err);
+      }
+    }
+  };
+
+  const handleOverrideRate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const parsedRate = parseInt(tempUsdRate);
+    if (!isNaN(parsedRate) && parsedRate > 0) {
+      try {
+        const res = await fetch('/api/gold-prices/override', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usdVndRate: parsedRate })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPrices(data);
+          setIsEditingUsdRate(false);
+          setToastMessage({
+            id: 'override-rate-' + Date.now(),
+            title: "CẬP NHẬT TỶ GIÁ THÀNH CÔNG",
+            text: `Giá đô-la đã đổi thành ${parsedRate.toLocaleString('vi-VN')} VND.`
+          });
+          setTimeout(() => setToastMessage(null), 4500);
+        }
+      } catch (err) {
+        console.error("Lỗi cập nhật tỷ giá thủ công:", err);
+      }
+    }
+  };
 
   // Fetch prices from local server with optional database refresh bypass
   const fetchPrices = async (force = false) => {
@@ -382,10 +444,10 @@ export default function App() {
         
         {/* Bento Market summary widgets with glass effect */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4" id="bento-indices-row">
-          
+
           {/* Box 1: World Gold Price tracker */}
           <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 rounded-xl p-4 shadow-lg flex items-center justify-between hover:border-slate-700/60 transition-all duration-300">
-            <div className="space-y-1">
+            <div className="space-y-1 w-full pr-2">
               <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
                 <Globe className="w-3.5 h-3.5 text-amber-500/70" />
                 VÀNG THẾ GIỚI (XAU/USD)
@@ -400,14 +462,14 @@ export default function App() {
               </div>
               <p className="text-[9px] text-slate-500 font-medium font-sans">Sàn New York • Cập nhật tự động</p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-slate-950 flex items-center justify-center text-amber-400 border border-slate-800 shadow">
+            <div className="w-9 h-9 rounded-full bg-slate-950 flex items-center justify-center text-amber-400 border border-slate-800 shadow shrink-0">
               <DollarSign className="w-4.5 h-4.5" />
             </div>
           </div>
-
+ 
           {/* Box 2: USD / VND Bank Rate tracker */}
-          <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 rounded-xl p-4 shadow-lg flex items-center justify-between hover:border-slate-700/60 transition-all duration-300">
-            <div className="space-y-1">
+          <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/80 rounded-xl p-4 shadow-lg flex items-center justify-between hover:border-slate-700/60 transition-all duration-350">
+            <div className="space-y-1 w-full pr-2">
               <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
                 <Activity className="w-3.5 h-3.5 text-blue-400/80" />
                 TỶ GIÁ USD / VND (VCB)
@@ -422,7 +484,7 @@ export default function App() {
               </div>
               <p className="text-[9px] text-slate-500 font-medium font-sans">Giá liên ngân hàng Vietcombank</p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-slate-950 flex items-center justify-center text-blue-400 border border-slate-800 shadow">
+            <div className="w-9 h-9 rounded-full bg-slate-950 flex items-center justify-center text-blue-400 border border-slate-800 shadow shrink-0">
               <Coins className="w-4.5 h-4.5" />
             </div>
           </div>

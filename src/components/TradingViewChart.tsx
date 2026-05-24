@@ -34,6 +34,8 @@ const TechAnalysisWidget = ({ symbol }: { symbol: string }) => {
         className="w-full h-full min-h-[300px]"
         style={{ border: 'none' }}
         title="TradingView Technical Analysis Gauge"
+        referrerPolicy="no-referrer"
+        sandbox="allow-scripts allow-same-origin allow-popups"
       />
     </div>
   );

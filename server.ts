@@ -60,32 +60,32 @@ function parseVietnameseValue(rawStr: string): number {
 // Simulated dynamic prices for Vietnamese brands
 let domesticPrices = {
   sjc: {
-    sjcHolding: { buy: 82500000, sell: 84500000 },
-    doji: { buy: 82600000, sell: 84450000 },
-    pnj: { buy: 82400000, sell: 84300000 },
-    btmc: { buy: 82700000, sell: 84500000 },
-    phuquy: { buy: 82550000, sell: 84400000 },
-    mihong: { buy: 82300000, sell: 84350000 },
-    baotinmanhhai: { buy: 82650000, sell: 84480000 },
-    sinhdien: { buy: 82350000, sell: 84380000 },
-    kimtin: { buy: 82600000, sell: 84550000 },
-    ngoctham: { buy: 82250000, sell: 84320000 },
-    kimchung: { buy: 82450000, sell: 84420000 },
-    quytung: { buy: 82380000, sell: 84350000 },
+    sjcHolding: { buy: 88500000, sell: 90500000 },
+    doji: { buy: 88550000, sell: 90450000 },
+    pnj: { buy: 88400000, sell: 90300000 },
+    btmc: { buy: 88650000, sell: 90500000 },
+    phuquy: { buy: 88550000, sell: 90400000 },
+    mihong: { buy: 88350000, sell: 90250000 },
+    baotinmanhhai: { buy: 88580000, sell: 90460000 },
+    sinhdien: { buy: 88300000, sell: 90350000 },
+    kimtin: { buy: 88600000, sell: 90550000 },
+    ngoctham: { buy: 88250000, sell: 90300000 },
+    kimchung: { buy: 88380000, sell: 90420000 },
+    quytung: { buy: 88320000, sell: 90350000 },
   },
   ring9999: {
-    sjcHolding: { buy: 75200000, sell: 76800000 },
-    doji: { buy: 75300000, sell: 76900000 },
-    pnj: { buy: 75150000, sell: 76650000 },
-    btmc: { buy: 75400000, sell: 77000000 },
-    phuquy: { buy: 75250000, sell: 76750000 },
-    mihong: { buy: 75100000, sell: 76550000 },
-    baotinmanhhai: { buy: 75320000, sell: 76950000 },
-    sinhdien: { buy: 75120000, sell: 76680000 },
-    kimtin: { buy: 75280000, sell: 76850000 },
-    ngoctham: { buy: 75050000, sell: 76520000 },
-    kimchung: { buy: 75180000, sell: 76680000 },
-    quytung: { buy: 75110000, sell: 76580000 },
+    sjcHolding: { buy: 75200000, sell: 76700000 },
+    doji: { buy: 75280000, sell: 76820000 },
+    pnj: { buy: 75150000, sell: 76600000 },
+    btmc: { buy: 75350000, sell: 76850000 },
+    phuquy: { buy: 75220000, sell: 76750000 },
+    mihong: { buy: 75080000, sell: 76620000 },
+    baotinmanhhai: { buy: 75270000, sell: 76800000 },
+    sinhdien: { buy: 75050000, sell: 76600000 },
+    kimtin: { buy: 75260000, sell: 76780000 },
+    ngoctham: { buy: 75020000, sell: 76580000 },
+    kimchung: { buy: 75100000, sell: 76640000 },
+    quytung: { buy: 75060000, sell: 76620000 },
   }
 };
 
@@ -109,7 +109,7 @@ async function updateRealTimeGoldPrices(force = false) {
       if (worldRes.ok) {
         const worldData = await worldRes.json() as any;
         const price = worldData?.chart?.result?.[0]?.meta?.regularMarketPrice;
-        if (price && typeof price === "number") {
+        if (price && typeof price === "number" && price > 1000) {
           currentWorldPrice = price;
         }
       }
@@ -183,16 +183,17 @@ async function updateRealTimeGoldPrices(force = false) {
       console.warn("Vietnam gold XML sync failed, using dynamic math solver.", e);
     }
 
-    // Dynamic SJC / Ring estimation fallback if SJC's servers are offline or block GCP IPs
-    if (foundSjcBuy < 40000000 || foundSjcSell < 40000000) {
-      const liveWorldEquivalent = (currentWorldPrice * 1.20565 * currentUsdVndRate);
-      foundSjcBuy = Math.round((liveWorldEquivalent * 1.125) / 100000) * 100000;
+    // Dynamic SJC / Ring estimation fallback if SJC's servers are offline, block GCP IPs, or provide values mathematically inconsistent with current world prices
+    const liveWorldEquivalent = (currentWorldPrice * 1.20565 * currentUsdVndRate);
+    if (foundSjcBuy < (liveWorldEquivalent * 0.9) || foundSjcSell < (liveWorldEquivalent * 0.9)) {
+      // SJC Bar carries a typical premium of ~14.3M VND above world conversion due to domestic monopoly
+      foundSjcBuy = Math.round((liveWorldEquivalent + 14300000) / 100000) * 100000;
       foundSjcSell = foundSjcBuy + 2000000;
     }
 
-    if (foundRingBuy < 30000000 || foundRingSell < 30000000) {
-      const liveWorldEquivalent = (currentWorldPrice * 1.20565 * currentUsdVndRate);
-      foundRingBuy = Math.round((liveWorldEquivalent * 1.042) / 100000) * 100000;
+    if (foundRingBuy < (liveWorldEquivalent * 0.8) || foundRingSell < (liveWorldEquivalent * 0.8)) {
+      // 9999 Rings carry around 1.2M VND premium above world conversion
+      foundRingBuy = Math.round((liveWorldEquivalent + 1200000) / 100000) * 100000;
       foundRingSell = foundRingBuy + 1500000;
     }
 
@@ -618,6 +619,55 @@ app.get("/api/gold-prices", async (req, res) => {
       usdPerOunce: currentWorldPrice,
       vndEquivalent: vndEquivalent,
       change24h: 1.24 // simulated stable 24h gain
+    },
+    domestic: domesticPrices,
+    usdVndRate: currentUsdVndRate,
+    lastUpdated: new Date().toISOString(),
+    params: defaultParams
+  });
+});
+
+// Override gold prices and usdVnd rates manually to specific real-life targets (e.g., $4509.69)
+app.post("/api/gold-prices/override", (req, res) => {
+  const { worldPrice, usdVndRate } = req.body;
+  if (typeof worldPrice === "number" && worldPrice > 0) {
+    currentWorldPrice = worldPrice;
+  }
+  if (typeof usdVndRate === "number" && usdVndRate > 0) {
+    currentUsdVndRate = Math.round(usdVndRate);
+  }
+
+  // Force recalculate SJC / Ring estimation immediately targeting the new live baseline
+  const liveWorldEquivalent = (currentWorldPrice * 1.20565 * currentUsdVndRate);
+  const foundSjcBuy = Math.round((liveWorldEquivalent * 1.125) / 100000) * 100000;
+  const foundSjcSell = foundSjcBuy + 2000000;
+
+  const foundRingBuy = Math.round((liveWorldEquivalent * 1.042) / 100000) * 100000;
+  const foundRingSell = foundRingBuy + 1500000;
+
+  // Re-distribute to all brands to keep them premium and mathematically stable
+  const brands = ['sjcHolding', 'doji', 'pnj', 'btmc', 'phuquy', 'mihong', 'baotinmanhhai', 'sinhdien', 'kimtin', 'ngoctham', 'kimchung', 'quytung'] as const;
+  brands.forEach((brand, idx) => {
+    const sjcBuyAdjust = idx === 0 ? 0 : (brand === 'doji' ? 50000 : (brand === 'pnj' ? -100000 : (brand === 'btmc' ? 150000 : -120000)));
+    const sjcSellAdjust = idx === 0 ? 0 : (brand === 'doji' ? -50000 : (brand === 'pnj' ? -150000 : -100000));
+    domesticPrices.sjc[brand].buy = foundSjcBuy + sjcBuyAdjust;
+    domesticPrices.sjc[brand].sell = foundSjcSell + sjcSellAdjust;
+
+    const ringBuyAdjust = idx === 0 ? 0 : (brand === 'doji' ? 80000 : (brand === 'pnj' ? -50000 : 70000));
+    const ringSellAdjust = idx === 0 ? 0 : (brand === 'doji' ? 120000 : (brand === 'pnj' ? -100000 : 80000));
+    domesticPrices.ring9999[brand].buy = foundRingBuy + ringBuyAdjust;
+    domesticPrices.ring9999[brand].sell = foundRingSell + ringSellAdjust;
+  });
+
+  lastFetchedTime = Date.now();
+  checkAndTriggerAlerts();
+
+  const vndEquivalent = calculateDomesticEquivalent(currentWorldPrice, currentUsdVndRate);
+  res.json({
+    world: {
+      usdPerOunce: currentWorldPrice,
+      vndEquivalent: vndEquivalent,
+      change24h: 1.24
     },
     domestic: domesticPrices,
     usdVndRate: currentUsdVndRate,
